@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import glob
+from PIL import Image
 from datetime import datetime
 from psd_tools import PSDImage
 
@@ -39,6 +40,7 @@ def parse_args():
         "--verbosity",
         dest="verbosity",
         default=1,
+        choices=LOG_LEVELS.keys(),
         type=int,
         help="how verbose should the output be, from 0=quiet to 3=debug")
     return parser.parse_args()
@@ -50,20 +52,27 @@ class PSDemiurge():
     def __init__(self):
         args = parse_args()
 
-        self.logger = logging.getLogger('PSDemiurge')
-        self.logger.setLevel(level=LOG_LEVELS[args.verbosity])
-
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(level=LOG_LEVELS[args.verbosity])
-        console_handler.setFormatter(
-            logging.Formatter("[%(levelname)s] %(message)s"))
-
-        self.logger.addHandler(console_handler)
+        self.create_logger(LOG_LEVELS[args.verbosity])
 
         self.logger.debug("Using target_folder '%s'", args.target_folder)
         self.target_folder = args.target_folder
         # rpy_path = "tbd"
         # self.rpy_file = open(rpy_path, 'w')
+
+
+    def create_logger(self, level):
+        """Create a logger with the specified log level."""
+
+        self.logger = logging.getLogger('PSDemiurge')
+        self.logger.setLevel(level)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(level)
+        console_handler.setFormatter(
+            logging.Formatter("[%(levelname)s] %(message)s"))
+
+        self.logger.addHandler(console_handler)
+
 
     def run(self):
         """Main method: processes files in given folder."""
@@ -117,18 +126,30 @@ class PSDemiurge():
             print("Now saving {}...".format(output_filename))
             output_full_filename = os.path.join(output_folder, output_filename)
 
-            # TODO: Right now, this fails badly when a layer is not the same
-            # size as the whole image. Can thankfully be ensured in
-            # the original .psd.
             if layer_names:
                 used_layers = [l for l in psd_image.layers if l.name in layer_names]
                 used_layers.reverse()
                 layer_images = [layer.as_PIL() for layer in used_layers]
 
-                for i in range(1, len(layer_images)):
-                    layer_images[0].paste(layer_images[i], layer_images[i])
+                bounding_size = self.get_bounding_size(used_layers)
+                self.logger.debug("Bounding size of all layers: %s", bounding_size)
 
-                layer_images[0].save(output_full_filename)
+                output_image = Image.new(layer_images[0].mode, bounding_size)
+
+                for i in range(0, len(layer_images)):
+                    ith_image = layer_images[i]
+                    ith_layer = used_layers[i]
+
+                    self.logger.debug("Treating layer %s", ith_layer)
+                    self.logger.debug("layer bbox is %s", ith_layer.bbox)
+                    self.logger.debug("Treating image %s", ith_image)
+
+                    output_image.paste(
+                        ith_image,
+                        box=(ith_layer.bbox.x1, ith_layer.bbox.y1),
+                        mask=ith_image)
+
+                output_image.save(output_full_filename)
 
             #self.rpy_file.write(
             #    "image {0} {1} = Image(\"img/characters/{0}/{2}\""
@@ -136,6 +157,21 @@ class PSDemiurge():
             #    .format(
             #        base_name, mood, output_filename, json_struct["yanchor"]))
 
+    def get_bounding_size(self, layers):
+        current_bbox = { "x1": 0, "y1": 0, "x2": 0, "y2": 0 }
+        self.logger.debug("Getting bounding size of layers %s", layers)
+        for layer in layers:
+            if (layer.bbox.x1 < current_bbox["x1"]):
+                current_bbox["x1"] = layer.bbox.x1
+            if (layer.bbox.y1 < current_bbox["y1"]):
+                current_bbox["y1"] = layer.bbox.y1
+            if (layer.bbox.x2 > current_bbox["x2"]):
+                current_bbox["x2"] = layer.bbox.x2
+            if (layer.bbox.y2 > current_bbox["y2"]):
+                current_bbox["y2"] = layer.bbox.y2
+
+        return (current_bbox["x2"] - current_bbox["x1"],
+                current_bbox["y2"] - current_bbox["y1"])
 
 if __name__ == '__main__':
     PSDemiurge().run()

@@ -1,0 +1,13 @@
+{
+    "yanchor": 0.50,
+    "moods": {
+        "blue_then_red": [
+            "Blue",
+            "Red"
+        ],
+        "red_then_blue": [
+            "Red",
+            "Blue"
+        ]
+    }
+}
