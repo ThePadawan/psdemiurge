@@ -9,10 +9,9 @@ before_install:
 install:
   - pip install -r requirements.txt
 before_script:
-  - pip install coverage
-  - pip install pylint
+  - pip install coverage pylint flake8
 script:
-  - pylint *.py
+  - pylint *.py && flake8 *.py
 #  - "./test.sh"
 #after_success:
 #  - bash <(curl -s https://codecov.io/bash)
