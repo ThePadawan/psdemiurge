@@ -5,7 +5,6 @@
 import argparse
 import json
 import logging
-import sys
 import os
 import glob
 from datetime import datetime
@@ -63,7 +62,7 @@ class PSDemiurge():
 
         self.logger.debug("Using target_folder '%s'", args.target_folder)
         self.target_folder = args.target_folder
-        rpy_path = "tbd"
+        # rpy_path = "tbd"
         # self.rpy_file = open(rpy_path, 'w')
 
     def run(self):
@@ -74,14 +73,14 @@ class PSDemiurge():
         filenames = [os.path.splitext(s)[0] for s in glob.glob(json_glob)]
 
         if len(filenames) < 1:
-            self.logger.warn("No .json files found, aborting.")
+            self.logger.warning("No .json files found, aborting.")
             return
 
         self.logger.debug("Found %d .json files", len(filenames))
 
         for fname in filenames:
             if not os.path.isfile("{}.psd".format(fname)):
-                self.logger.warn("No corresponding PSD found for file %s.json.", fname)
+                self.logger.warning("No corresponding PSD found for file %s.json.", fname)
 
         if not os.path.exists(self.target_folder):
             self.logger.info("Target folder does not exist, creating it...")
