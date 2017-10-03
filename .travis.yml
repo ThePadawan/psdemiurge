@@ -2,14 +2,13 @@ language: python
 python:
   - "3.5"
   - "3.6"
-  - "3.7"
 #before_install:
 #  - chmod a+x ./test.sh
 install:
-  - echo "run pip here"
 # - "pip install -r requirements.txt"
 before_script:
   - pip install coverage
+  - pip install pylint
 script:
   - pylint *.py
 #  - "./test.sh"
