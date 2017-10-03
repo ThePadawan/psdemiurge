@@ -1,0 +1,18 @@
+language: python
+python:
+  - "3.5"
+  - "3.6"
+before_install:
+  - python -m pip install --upgrade pip
+  - pip --version
+#  - chmod a+x ./test.sh
+install:
+  - pip install -r requirements.txt
+before_script:
+  - pip install coverage
+  - pip install pylint
+script:
+  - pylint *.py -d fixme # TODO: For now, ignore "TODO"s during development.
+#  - "./test.sh"
+#after_success:
+#  - bash <(curl -s https://codecov.io/bash)
