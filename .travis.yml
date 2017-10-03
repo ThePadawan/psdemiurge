@@ -12,7 +12,7 @@ before_script:
   - pip install coverage
   - pip install pylint
 script:
-  - pylint *.py -d fixme # TODO: For now, ignore "TODO"s during development.
+  - pylint *.py
 #  - "./test.sh"
 #after_success:
 #  - bash <(curl -s https://codecov.io/bash)
