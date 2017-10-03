@@ -20,6 +20,8 @@ def get_character_json(filename):
     return json.loads(json_string)
 
 class PSDemiurge():
+    """Main class: processes files in given folder."""
+
     def __init__(self):
         self.image_path = os.path.join("..", "Eidolon", "game", "img",
                                        "characters")
@@ -28,6 +30,7 @@ class PSDemiurge():
         self.rpy_file = open(rpy_path, 'w')
 
     def run(self):
+        """Main method: processes files in given folder."""
         filenames = [os.path.splitext(s)[0] for s in glob.glob("*.json")]
 
         for fname in filenames:
