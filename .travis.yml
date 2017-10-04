@@ -5,14 +5,11 @@ python:
 before_install:
   - python -m pip install --upgrade pip
   - pip --version
-#  - chmod a+x ./test.sh
+  - chmod a+x ./test.sh
 install:
   - pip install -r requirements.txt
 before_script:
-  - pip install coverage
-  - pip install pylint
+  - pip install coverage pylint flake8
 script:
-  - pylint *.py -d fixme # TODO: For now, ignore "TODO"s during development.
-#  - "./test.sh"
-#after_success:
-#  - bash <(curl -s https://codecov.io/bash)
+  - pylint *.py && flake8 *.py
+  - "./test.sh"
