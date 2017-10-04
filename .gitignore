@@ -1,5 +1,6 @@
 # Generated output
 examples/*.png
+*.rpy
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

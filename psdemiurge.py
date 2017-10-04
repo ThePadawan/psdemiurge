@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import os
+from collections import namedtuple
 import glob
 from datetime import datetime
 from PIL import Image
@@ -34,8 +35,17 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Process .psd + .json files into flattened images.")
     parser.add_argument(
-        dest="target_folder",
+        "-i",
+        "--in",
+        dest="source_folder",
+        required=True,
         help="folder in which to look for .json files")
+    parser.add_argument(
+        "-o",
+        "--out",
+        dest="rpy_file",
+        required=True,
+        help=".rpy file to write descriptions into")
     parser.add_argument(
         "-v",
         "--verbosity",
@@ -55,10 +65,16 @@ class PSDemiurge():
 
         self.create_logger(LOG_LEVELS[args.verbosity])
 
-        self.logger.debug("Using target_folder '%s'", args.target_folder)
-        self.target_folder = args.target_folder
-        # rpy_path = "tbd"
-        # self.rpy_file = open(rpy_path, 'w')
+        self.logger.debug("Using source_folder '%s'", args.source_folder)
+        self.source_folder = args.source_folder
+        rpy_path = os.path.abspath(args.rpy_file)
+        self.rpy_file = open(rpy_path, 'w')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.rpy_file.close()
 
     def create_logger(self, level):
         """Create a logger with the specified log level."""
@@ -76,7 +92,7 @@ class PSDemiurge():
     def run(self):
         """Main method: processes files in given folder."""
 
-        json_glob = os.path.join(os.path.abspath(self.target_folder), '*.json')
+        json_glob = os.path.join(os.path.abspath(self.source_folder), '*.json')
 
         filenames = [os.path.splitext(s)[0] for s in glob.glob(json_glob)]
 
@@ -92,15 +108,15 @@ class PSDemiurge():
                     "No corresponding PSD found for file %s.json.",
                     fname)
 
-        if not os.path.exists(self.target_folder):
+        if not os.path.exists(self.source_folder):
             self.logger.info("Target folder does not exist, creating it...")
-            os.mkdir(self.target_folder)
+            os.mkdir(self.source_folder)
 
         now = datetime.now()
         now_string = now.strftime("%a, %b %d %Y, %H:%M")
         self.logger.info("Using timestamp '%s'", now_string)
 
-        # self.rpy_file.write(TIMESTAMP.format(now_string))
+        self.rpy_file.write(TIMESTAMP.format(now_string))
         for base_name in sorted(filenames):
             self.render_pngs(base_name)
 
@@ -117,10 +133,10 @@ class PSDemiurge():
         psd_image = PSDImage.load(psd_name)
         json_struct = get_character_json("{}.json".format(base_name))
 
-        # self.rpy_file.write("# {}\n".format(base_name))
+        self.rpy_file.write("# {}\n".format(base_name))
 
         for mood, layer_names in sorted(json_struct["moods"].items()):
-            output_folder = os.path.join(self.target_folder, base_name)
+            output_folder = os.path.join(self.source_folder, base_name)
             if not os.path.exists(output_folder):
                 os.mkdir(output_folder)
 
@@ -130,18 +146,23 @@ class PSDemiurge():
                     mood)
                 continue
 
-            output_filename = "{}_{}.png".format(base_name, mood)
+            character_name = os.path.basename(base_name)
+
+            output_filename = "{}_{}.png".format(character_name, mood)
             self.logger.info("Now saving %s", format(output_filename))
 
             output_image = self.combine_layers(psd_image, layer_names)
 
             output_image.save(os.path.join(output_folder, output_filename))
 
-            # self.rpy_file.write(
-            #    "image {0} {1} = Image(\"img/characters/{0}/{2}\""
-            #    ", yanchor={3:.2f})\n"
-            #    .format(
-            #        base_name, mood, output_filename, json_struct["yanchor"]))
+            self.rpy_file.write(
+                "image {0} {1} = Image(\"img/characters/{0}/{2}\""
+                ", yanchor={3:.2f})\n"
+                .format(
+                    character_name,
+                    mood,
+                    output_filename,
+                    json_struct["yanchor"]))
 
     def combine_layers(self, psd_image, layer_names):
         """Flattens layers with given names in given image into one image."""
@@ -172,22 +193,24 @@ class PSDemiurge():
 
     def get_bounding_size(self, layers):
         """Get (width, height) of bbox of bboxes of given layers."""
+        bbox = namedtuple('Bbox', ["x1", "x2", "y1", "y2"])
+        current_bbox = bbox(0, 0, 0, 0)
 
-        current_bbox = {"x1": 0, "y1": 0, "x2": 0, "y2": 0}
         self.logger.debug("Getting bounding size of layers %s", layers)
         for layer in layers:
-            if layer.bbox.x1 < current_bbox["x1"]:
-                current_bbox["x1"] = layer.bbox.x1
-            if layer.bbox.y1 < current_bbox["y1"]:
-                current_bbox["y1"] = layer.bbox.y1
-            if layer.bbox.x2 > current_bbox["x2"]:
-                current_bbox["x2"] = layer.bbox.x2
-            if layer.bbox.y2 > current_bbox["y2"]:
-                current_bbox["y2"] = layer.bbox.y2
+            if layer.bbox.x1 < current_bbox.x1:
+                current_bbox = current_bbox._replace(x1=layer.bbox.x1)
+            if layer.bbox.y1 < current_bbox.y1:
+                current_bbox = current_bbox._replace(y1=layer.bbox.y1)
+            if layer.bbox.x2 > current_bbox.x2:
+                current_bbox = current_bbox._replace(x2=layer.bbox.x2)
+            if layer.bbox.y2 > current_bbox.y2:
+                current_bbox = current_bbox._replace(y2=layer.bbox.y2)
 
-        return (current_bbox["x2"] - current_bbox["x1"],
-                current_bbox["y2"] - current_bbox["y1"])
+        return (current_bbox.x2 - current_bbox.x1,
+                current_bbox.y2 - current_bbox.y1)
 
 
 if __name__ == '__main__':
-    PSDemiurge().run()
+    with PSDemiurge() as p:
+        p.run()
