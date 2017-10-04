@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """Converts character art from .psd format of stacked layers to multiple files
    of alpha-blended layers based on .json per-character configuration files."""
 

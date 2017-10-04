@@ -5,13 +5,13 @@ python:
 before_install:
   - python -m pip install --upgrade pip
   - pip --version
-#  - chmod a+x ./test.sh
+  - chmod a+x ./test.sh
 install:
   - pip install -r requirements.txt
 before_script:
   - pip install coverage pylint flake8
 script:
   - pylint *.py && flake8 *.py
-#  - "./test.sh"
+  - "./test.sh"
 #after_success:
 #  - bash <(curl -s https://codecov.io/bash)
